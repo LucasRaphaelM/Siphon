@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-Br">
+  <head>
+    <title>Siphon</title>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  
+<body>
+    <header data-tauri-drag-region class="titlebar">
+    </header>
+
+    <div class="upload-container">
+      <input type="file" id="fileInput" hidden />
+      
+      <label for="fileInput" class="drop-area" id="dropArea">
+        <div class="upload-content">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+            <path d="M12 16V4M12 4L8 8M12 4L16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 16V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p>Arraste seu arquivo aqui</p>
+          <span>ou clique para selecionar</span>
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div id="concluido">
+          </div>
+        </div>
+      </label>
+    </div>
+</body>
+  <script type="module" src="/main.js" defer></script>
+</html>

@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Reenie+Beanie&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+* {
+  font-family: "Roboto", sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  /* background-color: transparent; */
+  background: rgba(30, 30, 30, 0.8); /* cor escura semi transparente */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  width: 100%;
+  height: 100vh;
+}
+
+.titlebar {
+  width: 100%; /* Garante que ocupe toda a largura */
+  height: 18px;
+  background-color: transparent;
+  user-select: none;
+  display: flex; /* Bom para alinhar o texto verticalmente */
+  align-items: center;
+}
+
+.siphonTitle {
+  color: #F5F5F5;
+}
+
+
+.upload-container {
+  margin: 0px 15px;
+}
+
+.drop-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+  border: 2px dashed #444;
+  border-radius: 20px;
+  background-color: #1a1a1a;
+  color: #ccc;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.drop-area:hover {
+  border-color: #777;
+  background-color: #222;
+}
+
+.drop-area.dragover {
+  border-color: #ffffff;
+  background-color: #2a2a2a;
+  color: #fff;
+  transform: scale(1.02);
+}
+
+.upload-content svg {
+  margin-bottom: 15px;
+  opacity: 0.8;
+}
+
+.upload-content p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.upload-content span {
+  font-size: 13px;
+  color: #888;
+}
+
+.progress-container {
+  margin-top: 15px;
+  width: 100%;
+  height: 6px;
+  background: #333;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  background: #ffffff;
+  transition: width 0.2s ease;
+}
