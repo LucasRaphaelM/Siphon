@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-window": "^2.0.0-alpha.1"
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-window": "^2.0.0-alpha.1",
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1"
   }
 }

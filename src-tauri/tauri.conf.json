@@ -11,15 +11,15 @@
     "windows": [
       {
         "title": "siphon",
-        "width": 400,
-        "height": 300,
+        "width": 500,
+        "height": 350,
         "resizable": false,
         "fullscreen": false,
         "skipTaskbar": true,
         "decorations" : false,
         "visible" : false,
         "alwaysOnTop": true,
-        "transparent": true
+        "transparent": false
       }
     ],
     "security": {
@@ -35,6 +35,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/cloudflared"
     ]
   }
 }
