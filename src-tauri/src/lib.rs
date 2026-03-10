@@ -1,15 +1,40 @@
 use std::fs::{self, create_dir_all, OpenOptions}; // Adicionado self e fs aqui
 use std::io::{Read, Write};
-use std::net::TcpListener;
-use std::thread;
+use std::path::Path;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{LogicalPosition, Manager};
-
-// Imports necessários para o Sidecar e Canais na V2
+use tiny_http::{Server, Response, Header};
+use std::fs::{File};
+use tauri::{AppHandle, Emitter, Runtime};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 use tokio::sync::oneshot;
+use std::thread;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+use std::net::TcpListener;
+use tauri::State;
+
+
+static SERVER_RUNNING: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+
+
+// Arquivos embutidos para build
+#[cfg(not(debug_assertions))] // build
+const INDEX_HTML: &str = include_str!("../../src/index.html");
+#[cfg(not(debug_assertions))]
+const STYLE_CSS: &str = include_str!("../../src/styles.css");
+#[cfg(not(debug_assertions))]
+const MAIN_JS: &str = include_str!("../../src/main.js");
+
+fn get_free_port() -> u16 {
+    TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+}
 
 #[tauri::command]
 async fn start_cloudflared_tunnel(app: tauri::AppHandle, port: String) -> Result<String, String> {
@@ -54,109 +79,91 @@ async fn start_cloudflared_tunnel(app: tauri::AppHandle, port: String) -> Result
     }
 }
 
+struct AppState {
+    html_atual: Mutex<String>,
+}
+
 #[tauri::command]
-fn start_local_server(caminho: String) -> Result<u16, String> {
-    #[cfg(windows)]
-    let _ = std::process::Command::new("taskkill")
-        .args(["/F", "/IM", "cloudflared-x86_64-pc-windows-msvc.exe"])
-        .output();
-    // Tenta abrir o listener na porta 0 (o SO escolhe uma disponível)
-    let listener =
-        TcpListener::bind("127.0.0.1:0").map_err(|e| format!("Erro ao criar listener: {}", e))?;
+fn atualizar_html_servidor(novo_html: String, state: State<'_, AppState>) {
+    let mut conteudo = state.html_atual.lock().unwrap();
+    *conteudo = novo_html; // Atualiza o HTML na memória do servidor
+}
 
-    let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+#[tauri::command]
+fn start_local_server() -> Result<u16, String> {
 
-    // Clonamos o path para mover para dentro da thread
-    let path_to_serve = caminho.clone();
+    let mut running = SERVER_RUNNING.lock().unwrap();
+    if *running {
+        return Err("Servidor já está rodando".into());
+    }
+
+    let port = get_free_port();
+    let server = Server::http(format!("127.0.0.1:{}", port))
+    .map_err(|e| e.to_string())?;
+
+    println!("Servidor rodando na porta {}", port);
+
+    *running = true;
 
     thread::spawn(move || {
-        // Aceita as conexões que chegarem
-        for mut stream in listener.incoming().flatten() {
-            let mut buffer = [0; 1024];
-            let _ = stream.read(&mut buffer);
+        for request in server.incoming_requests() {
 
-            // Tenta ler o arquivo solicitado no parâmetro
-            match fs::read(&path_to_serve) {
-                Ok(content) => {
-                    // Monta o cabeçalho HTTP de sucesso
-                    let header = format!(
-                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\n\r\n",
-                        content.len()
-                    );
-                    let _ = stream.write_all(header.as_bytes());
-                    let _ = stream.write_all(&content);
-                }
-                Err(e) => {
-                    // Caso o arquivo não exista ou ocorra erro de leitura
-                    let error_msg = format!("Erro ao ler arquivo: {}", e);
-                    let header = format!(
-                        "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n\r\n",
-                        error_msg.len()
-                    );
-                    let _ = stream.write_all(header.as_bytes());
-                    let _ = stream.write_all(error_msg.as_bytes());
-                }
-            }
-            let _ = stream.flush();
+            // Para DEV, lê do disco (atualizações imediatas)
+            #[cfg(debug_assertions)]
+            let html = {
+                let exe_path = std::env::current_dir().unwrap();
+                let html_path = exe_path.join("..").join("src").join("index.html");
+                std::fs::read_to_string(html_path)
+                    .unwrap_or_else(|_| "Erro ao carregar HTML".to_string())
+            };
+
+            // Para BUILD, usa embutido
+            #[cfg(not(debug_assertions))]
+            let html = INDEX_HTML;
+
+            let response = Response::from_string(html)
+                .with_header(
+                    Header::from_bytes(&b"Content-Type"[..], &b"text/html"[..]).unwrap()
+                );
+
+            let _ = request.respond(response);
         }
     });
 
     Ok(port)
 }
 
-#[tauri::command]
-fn upload_chunk(
-    app: tauri::AppHandle,
-    file_name: String,
-    chunk: Vec<u8>,
-    is_first: bool,
-) -> Result<String, String> {
-    // 👈 MUDOU AQUI
+// #[tauri::command]
+// fn stop_local_server() -> Result<String, String> {
 
-    let base_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+//     let mut running = SERVER_RUNNING.lock().unwrap();
 
-    let roaming_dir = base_dir.parent().ok_or("Erro AppData")?;
-    let siphon_dir = roaming_dir.join("Siphon");
-    let files_dir = siphon_dir.join("Files");
+//     if *running {
+//         *running = false;
+//         Ok("Servidor parado".into())
+//     } else {
+//         Err("Servidor não está rodando".into())
+//     }
+// }
 
-    if !files_dir.exists() {
-        create_dir_all(&files_dir).map_err(|e| e.to_string())?;
-    }
-
-    let file_path = files_dir.join(&file_name);
-
-    let mut file = if is_first {
-        OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&file_path)
-            .map_err(|e| e.to_string())?
-    } else {
-        OpenOptions::new()
-            .append(true)
-            .open(&file_path)
-            .map_err(|e| e.to_string())?
-    };
-
-    file.write_all(&chunk).map_err(|e| e.to_string())?;
-
-    Ok(file_path.to_string_lossy().to_string())
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
-            upload_chunk,
             start_local_server,
             start_cloudflared_tunnel,
-            copiar_com_progresso
+            copiar_com_progresso,
+            atualizar_html_servidor,
         ])
-        .setup(|app| {
+        .manage(AppState {
+            html_atual: Mutex::new("<h1>Iniciado</h1>".to_string()),
+        })
+        .setup(|app| {            
+
             // 1. Criamos os itens do menu
             let toggle_i =
                 MenuItem::with_id(app, "toggle_visibility", "Mostrar", true, None::<&str>)?;
@@ -193,8 +200,8 @@ pub fn run() {
                                     let scale_factor = monitor.scale_factor();
                                     let logical_size = monitor_size.to_logical::<f64>(scale_factor);
 
-                                    let x = logical_size.width - 500.0 - 100.0;
-                                    let y = logical_size.height - 350.0 - 200.0;
+                                    let x = logical_size.width - 350.0 - 60.0;
+                                    let y = logical_size.height - 700.0 - 100.0;
                                     let _ = window.set_position(tauri::Position::Logical(
                                         LogicalPosition { x, y },
                                     ));
@@ -219,8 +226,8 @@ pub fn run() {
                                     let monitor_size = monitor.size();
                                     let scale_factor = monitor.scale_factor();
                                     let logical_size = monitor_size.to_logical::<f64>(scale_factor);
-                                    let x = logical_size.width - 500.0 - 100.0;
-                                    let y = logical_size.height - 350.0 - 200.0;
+                                    let x = logical_size.width - 350.0 - 60.0;
+                                    let y = logical_size.height - 700.0 - 100.0;
                                     let _ = window.set_position(tauri::Position::Logical(
                                         LogicalPosition { x, y },
                                     ));
@@ -245,9 +252,6 @@ pub fn run() {
 }
 
 
-use std::fs::{File};
-use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, Runtime};
 #[tauri::command]
 async fn copiar_com_progresso<R: Runtime>(
     app: AppHandle<R>,
@@ -289,4 +293,26 @@ async fn copiar_com_progresso<R: Runtime>(
     }
 
     Ok(caminho_destino.to_string_lossy().to_string())
+}
+
+
+
+fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), String> {
+    if !dst.exists() {
+        fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    }
+
+    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        let dest_path = dst.join(entry.file_name());
+
+        if path.is_dir() {
+            copy_dir_all(&path, &dest_path)?;
+        } else {
+            fs::copy(&path, &dest_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
 }

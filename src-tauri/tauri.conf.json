@@ -4,15 +4,17 @@
   "version": "1.0.0",
   "identifier": "com.siphon.br",
   "build": {
-    "frontendDist": "../src"
+    "frontendDist": "../src",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
         "title": "siphon",
-        "width": 500,
-        "height": 350,
+        "width": 350,
+        "height": 700,
         "resizable": false,
         "fullscreen": false,
         "skipTaskbar": true,
@@ -23,7 +25,14 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$APPDATA/**",
+          "$APPDATA/Siphon/**"
+        ]
+      }
     }
   },
   "bundle": {

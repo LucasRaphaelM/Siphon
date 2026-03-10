@@ -4,23 +4,62 @@
     <title>Siphon</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="./assets/bootstrap/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="./assets/bootstrap-icons/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="/assets/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/bootstrap-icons/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/styles.css" />
   </head>
 <body data-tauri-drag-region>
+  <header data-tauri-drag-region>
+    <button type="button" class="btn btn-primary expand-button" onclick=""><i class="bi bi-arrows-angle-expand expand-icon"></i></button>
+    <div class="title" data-tauri-drag-region>
+      <h3 class="title-h3" data-tauri-drag-region>Siphon</h3>
+      <p id="title-p" class="title-p" data-tauri-drag-region>Server off</p>
+    </div>
+    <button id="btnOnOff" type="button" class="btn btn-primary button-turn-off-on" onclick="startServer()"><i id="btnOnOffIcon" class="bi bi-power power-off"></i></button>
+  </header>
   <div id="fileDropSearch" class="gap-2 fileDropSearch">
     <input type="file" id="fileInput" hidden>
     <div id="circleItem" class="circleItem">
       <i id="pastaIcone" class="bi bi-folder pasta-fechada"></i>
     </div>
-    <p class="textUnderCircle">Browse your file here or just click with your file in your clipboard</p>
+    <p class="textUnderCircle">Drop your file here or browse</p>
   </div>
-  <div id="file-list"></div>
+  <div id="file-list">
+    <button onclick="teste()">TESTE 1</button>
+    <button onclick="teste2()">TESTE 2</button>
+    <p id="teste-id" style="color: #00ff00;">AQUI</p>
+
+
+    <!-- <div class="file-div">
+      
+      <div class="conteudo-file-div">
+        <div class="logo-titulo-tipo">
+          <div class="logo-arquivo-div">
+            <i class="bi bi-filetype-mp4 tipo-arquivo-logo"></i>
+          </div>
+          <div class="titulo-tipo">
+            <h4 class="title-file-card">Doctor Who</h4>
+            <p class="tamanho-tipo">300 MB · MP4</p>
+          </div>
+        </div>
+        <div class="porcentagem-botoes">
+          <p class="porcentagem">85%</p>
+          <button type="button" class="btn btn-primary button-copy"><i class="bi bi-clipboard2 copy"></i></button>
+          <button type="button" class="btn btn-primary button-delete"><i class="bi bi-trash delete"></i></button>
+        </div>
+      </div>
+      <div class="progress-container">
+        <div class="progress-fill"></div>
+      </div>
+
+    </div> -->
+
+  </div>
   <div id="porcentagemEscrita">
   </div>
+  <iframe id="meuFrame" src="http://localhost:5500" href="http://localhost:5500" frameborder="0"></iframe>
     
 </body>
-<script type="module" src="main.js" defer></script>
-<script src="./assets/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/main.js" defer></script>
+<script src="/assets/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 </html>

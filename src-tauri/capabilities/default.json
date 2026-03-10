@@ -11,9 +11,10 @@
     "core:tray:default",
     "core:event:default",
     "core:path:default",
-    "opener:default",
     "core:window:allow-start-dragging",
     "shell:allow-execute",
-    "fs:default"
+    "fs:allow-exists",
+    "fs:allow-stat",
+    "dialog:default"
   ]
 }
