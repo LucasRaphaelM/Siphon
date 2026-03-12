@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "siphon",
   "version": "1.0.0",
-  "identifier": "com.siphon.br",
+  "identifier": "Siphon",
   "build": {
     "frontendDist": "../src",
     "beforeDevCommand": "",
@@ -36,6 +36,9 @@
     }
   },
   "bundle": {
+    "resources": [
+      "resources/Web"
+    ],
     "active": true,
     "targets": "all",
     "icon": [

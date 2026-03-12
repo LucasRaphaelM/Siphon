@@ -19,15 +19,6 @@ use tauri::State;
 
 static SERVER_RUNNING: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
-
-// Arquivos embutidos para build
-#[cfg(not(debug_assertions))] // build
-const INDEX_HTML: &str = include_str!("../../src/index.html");
-#[cfg(not(debug_assertions))]
-const STYLE_CSS: &str = include_str!("../../src/styles.css");
-#[cfg(not(debug_assertions))]
-const MAIN_JS: &str = include_str!("../../src/main.js");
-
 fn get_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
         .unwrap()
@@ -90,7 +81,7 @@ fn atualizar_html_servidor(novo_html: String, state: State<'_, AppState>) {
 }
 
 #[tauri::command]
-fn start_local_server() -> Result<u16, String> {
+fn start_local_server(path: String) -> Result<u16, String> {
 
     let mut running = SERVER_RUNNING.lock().unwrap();
     if *running {
@@ -99,32 +90,40 @@ fn start_local_server() -> Result<u16, String> {
 
     let port = get_free_port();
     let server = Server::http(format!("127.0.0.1:{}", port))
-    .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     println!("Servidor rodando na porta {}", port);
+    println!("Servindo arquivos de: {}", path);
 
     *running = true;
 
     thread::spawn(move || {
+        let base_path = std::path::PathBuf::from(path);
+
         for request in server.incoming_requests() {
 
-            // Para DEV, lê do disco (atualizações imediatas)
-            #[cfg(debug_assertions)]
-            let html = {
-                let exe_path = std::env::current_dir().unwrap();
-                let html_path = exe_path.join("..").join("src").join("index.html");
-                std::fs::read_to_string(html_path)
-                    .unwrap_or_else(|_| "Erro ao carregar HTML".to_string())
+            // pega a rota pedida no navegador
+            let url = request.url().trim_start_matches("/");
+
+            let mut file_path = base_path.join(url);
+
+            // se pedir "/", abre index.html
+            if request.url() == "/" {
+                file_path = base_path.join("index.html");
+            }
+
+            let response = match std::fs::read(&file_path) {
+                Ok(content) => {
+                    Response::from_data(content)
+                        .with_header(
+                            Header::from_bytes(&b"Content-Type"[..], &b"text/html"[..]).unwrap()
+                        )
+                }
+                Err(_) => {
+                    Response::from_string("404 - Arquivo não encontrado")
+                        .with_status_code(404)
+                }
             };
-
-            // Para BUILD, usa embutido
-            #[cfg(not(debug_assertions))]
-            let html = INDEX_HTML;
-
-            let response = Response::from_string(html)
-                .with_header(
-                    Header::from_bytes(&b"Content-Type"[..], &b"text/html"[..]).unwrap()
-                );
 
             let _ = request.respond(response);
         }
@@ -158,11 +157,37 @@ pub fn run() {
             start_cloudflared_tunnel,
             copiar_com_progresso,
             atualizar_html_servidor,
+            get_appdata_path,
         ])
         .manage(AppState {
             html_atual: Mutex::new("<h1>Iniciado</h1>".to_string()),
         })
-        .setup(|app| {            
+        .setup(|app| {   
+           let resource_path = if cfg!(debug_assertions) {
+    let mut path = std::env::current_exe().unwrap();
+    path.pop(); // siphon.exe
+    path.pop(); // debug
+    path.pop(); // target  -> agora estamos em src-tauri
+    path.push("resources");
+    path.push("Web");
+    path
+} else {
+    app.path()
+        .resolve("resources/Web", tauri::path::BaseDirectory::Resource)
+        .unwrap()
+};
+    let appdata = app
+        .path()
+        .app_data_dir()
+        .unwrap()
+        .join("Web");
+
+    println!("resource_path: {:?}", resource_path);
+    println!("appdata: {:?}", appdata);
+
+    if let Err(e) = sync_dir_template(&resource_path, &appdata) {
+        println!("Erro ao sincronizar Web: {:?}", e);
+    }
 
             // 1. Criamos os itens do menu
             let toggle_i =
@@ -252,31 +277,71 @@ pub fn run() {
 }
 
 
+// #[tauri::command]
+// async fn copiar_com_progresso<R: Runtime>(
+//     app: AppHandle<R>,
+//     caminho_origem: String,
+// ) -> Result<String, String> {
+//     // 1. Pega o caminho base do sistema (Roaming no Windows)
+//     let mut caminho_destino = app.path().config_dir()
+//         .map_err(|e| e.to_string())?;
+    
+//     // 2. Constrói o caminho manualmente: Roaming -> Siphon -> Files
+//     caminho_destino.push("Siphon");
+//     caminho_destino.push("Files");
+
+//     // 3. Cria as pastas (Siphon e Files dentro dela)
+//     fs::create_dir_all(&caminho_destino).map_err(|e| e.to_string())?;
+
+//     let origem_path = std::path::PathBuf::from(&caminho_origem);
+//     let nome_arquivo = origem_path.file_name().ok_or("Nome inválido")?;
+    
+//     // Caminho final: AppData/Roaming/Siphon/Files/nome_do_arquivo.ext
+//     caminho_destino.push(nome_arquivo);
+
+//     // ... restante do código de cópia (File::open, buffer, etc) ...
+    
+//     // Copiando para facilitar:
+//     let mut arquivo_origem = File::open(&origem_path).map_err(|e| e.to_string())?;
+//     let total_size = arquivo_origem.metadata().map_err(|e| e.to_string())?.len();
+//     let mut arquivo_destino = File::create(&caminho_destino).map_err(|e| e.to_string())?;
+
+//     let mut buffer = [0; 64 * 1024];
+//     let mut bytes_copiados = 0;
+
+//     while let Ok(n) = arquivo_origem.read(&mut buffer) {
+//         if n == 0 { break; }
+//         arquivo_destino.write_all(&buffer[..n]).map_err(|e| e.to_string())?;
+//         bytes_copiados += n as u64;
+//         let porcentagem = (bytes_copiados as f64 / total_size as f64 * 100.0) as u64;
+//         app.emit("progresso-copia", porcentagem).unwrap();
+//     }
+
+//     Ok(caminho_destino.to_string_lossy().to_string())
+// }
+
 #[tauri::command]
 async fn copiar_com_progresso<R: Runtime>(
     app: AppHandle<R>,
     caminho_origem: String,
 ) -> Result<String, String> {
-    // 1. Pega o caminho base do sistema (Roaming no Windows)
+    let origem_path = std::path::PathBuf::from(&caminho_origem);
+    
+    let subpasta = detectar_subpasta(&origem_path);
+
     let mut caminho_destino = app.path().config_dir()
         .map_err(|e| e.to_string())?;
     
-    // 2. Constrói o caminho manualmente: Roaming -> Siphon -> Files
     caminho_destino.push("Siphon");
-    caminho_destino.push("Files");
+    caminho_destino.push("Web");
+    caminho_destino.push(subpasta);
+    caminho_destino.push("assets");
 
-    // 3. Cria as pastas (Siphon e Files dentro dela)
     fs::create_dir_all(&caminho_destino).map_err(|e| e.to_string())?;
 
-    let origem_path = std::path::PathBuf::from(&caminho_origem);
     let nome_arquivo = origem_path.file_name().ok_or("Nome inválido")?;
-    
-    // Caminho final: AppData/Roaming/Siphon/Files/nome_do_arquivo.ext
     caminho_destino.push(nome_arquivo);
 
-    // ... restante do código de cópia (File::open, buffer, etc) ...
-    
-    // Copiando para facilitar:
     let mut arquivo_origem = File::open(&origem_path).map_err(|e| e.to_string())?;
     let total_size = arquivo_origem.metadata().map_err(|e| e.to_string())?.len();
     let mut arquivo_destino = File::create(&caminho_destino).map_err(|e| e.to_string())?;
@@ -295,24 +360,70 @@ async fn copiar_com_progresso<R: Runtime>(
     Ok(caminho_destino.to_string_lossy().to_string())
 }
 
+fn detectar_subpasta(path: &std::path::Path) -> &'static str {
+    const TIPOS: &[(&[&str], &str)] = &[
+        (&["mp4", "mkv", "avi", "mov", "webm"],   "video"),
+        (&["png", "jpg", "jpeg", "gif", "webp"],  "image"),
+        (&["mp3", "wav", "ogg", "flac"],          "audio"),
+        (&["zip", "rar"],                         "zip"),
+        (&["pdf", "doc", "docx", "txt"],          "document"),
+    ];
 
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase());
 
-fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), String> {
-    if !dst.exists() {
-        fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    let ext = ext.as_deref().unwrap_or("");
+
+    for (extensoes, subpasta) in TIPOS {
+        if extensoes.contains(&ext) {
+            return subpasta;
+        }
     }
 
-    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        let dest_path = dst.join(entry.file_name());
+    "file"
+}
 
-        if path.is_dir() {
-            copy_dir_all(&path, &dest_path)?;
+
+fn sync_dir_template(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    let src = src.as_ref();
+    let dst = dst.as_ref();
+
+    if !dst.exists() {
+        fs::create_dir_all(dst)?;
+    }
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if file_type.is_dir() {
+            // cria a subpasta antes
+            fs::create_dir_all(&dst_path)?;
+            sync_dir_template(src_path, dst_path)?;
         } else {
-            fs::copy(&path, &dest_path).map_err(|e| e.to_string())?;
+            // garante que a pasta pai exista
+            if let Some(parent) = dst_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            fs::copy(src_path, dst_path)?;
         }
     }
 
     Ok(())
+}
+
+#[tauri::command]
+fn get_appdata_path(app: tauri::AppHandle) -> String {
+    let path = app
+        .path()
+        .app_data_dir()
+        .unwrap();
+
+    path.to_string_lossy().to_string()
 }

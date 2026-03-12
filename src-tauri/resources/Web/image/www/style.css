@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Reenie+Beanie&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+* {
+    margin: 0px;
+    padding: 0px;
+    font-family: "Roboto", sans-serif;
+    box-sizing: border-box;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    background-image: url('../../assets/imgs/background.png'); /* Substitua pelo link da sua imagem */
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center; 
+    
+    /* From https://css.glass */
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+    border-radius: 25px;
+}
+
+.textImagePreview {
+    padding-top: 10px;
+    color: #fff;
+}
+
+.imageDiv {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+}
+
+.imagemPreview {
+    border-radius: 25px;
+    padding: 10px;
+    height: 60vh;
+}
+
+.infoImage {
+    width: 100%;
+    padding-left: 25px;
+    padding-bottom: 10px;
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    gap: 100px;
+}
+
+.infoText {
+    color: #fff;
+}
+
+.downloadButtonDiv {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.downloadButton {
+    color: #fff;
+    background-color: #092033;
+    
+    font-size: 32px;
+    
+    padding: 10px 30px;
+    border: none;
+    outline: inherit;
+    border-radius: 20px;
+    
+    cursor: pointer;
+    
+    box-shadow: 0px 0px 50px -5px rgba(0,255,255,0.15);
+
+    transition: all 0.4s ease;
+}
+
+.downloadButton:hover {
+    color: #092033;
+    background-color: #00ffff;
+    box-shadow: 0px 0px 50px 0px rgba(0,255,255,0.4);
+}

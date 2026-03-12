@@ -209,14 +209,13 @@ window.addEventListener('drop', (e) => e.preventDefault());
 // }
 
 
-async function startServer() {
+async function startServer(caminho) {
   document.getElementById('btnOnOffIcon').classList.replace("power-off", "power-none");
   document.getElementById('title-p').innerText = "Turning on server";
 
-  const port = await invoke("start_local_server");
+  const port = await invoke("start_local_server", { path: caminho });
 
   const url = `http://localhost:${port}`;
-  document.getElementById('teste-id').innerHTML= `http://localhost:${port}`;
 
   document.getElementById('btnOnOffIcon').classList.replace("power-none", "power-on");
   document.getElementById('title-p').innerText = "Server On";
@@ -235,29 +234,7 @@ async function stopServer() {
   document.getElementById('title-p').innerText = "Server off";
 }
 
-function teste1() {
-  document.getElementById('teste-id').innerHTML="FUNCIONA 1";
+async function pegarAppData() {
+    const path = await invoke("get_appdata_path");
+    console.log(path);
 }
-
-function teste2() {
-  document.getElementById('teste-id').innerHTML="FUNCIONA 2";
-}
-
-async function mudarEPropagar(novoConteudo) {
-    // 1. Muda a sua tela local
-    document.getElementById('teste-id').innerHTML = novoConteudo;
-
-    // 2. Envia para o "Localhost" do Rust
-    await invoke('atualizar_html_servidor', { novoHtml: document.documentElement.outerHTML });
-}
-
-
-
-
-window.addEventListener('message', (event) => {
-    if (event.origin !== 'http://localhost:5500') return; // segurança
-
-    if (event.data.action === 'updateText') {
-      document.getElementById('testeId').innerText = event.data.value;
-    }
-  });

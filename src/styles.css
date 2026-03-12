@@ -58,12 +58,14 @@ header {
 .title-h3 {
   color: #fff;
   user-select: none;
+  margin-bottom: 0px;
 }
 
 .title-p {
   color: #aaa;
   font-size: 14px;
   user-select: none;
+  margin-bottom: 0px;
 }
 
 .button-turn-off-on {
@@ -146,8 +148,16 @@ header {
 }
 
 .textUnderCircle {
-  color: white;
-  margin: 0 !important;
+  color: #fff;
+  margin: 0px;
+  margin-bottom: 0px;
+}
+
+.subTextUnderCircle {
+  color: #777;
+  font-size: 14px;
+  margin-bottom: 0px;
+  margin-top: -5px;
 }
 
 .file-div {
